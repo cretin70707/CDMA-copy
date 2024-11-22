@@ -28,7 +28,7 @@ def get_arguments():
     parser.add_argument("--dataset_root", type=str,
                         default="", help="training images")
     parser.add_argument("--batch_size", type=int,
-                        default=16, help="Train batch size")
+                        default=8, help="Train batch size")
     parser.add_argument("--labeled_bs", type=int, default=8)
     parser.add_argument("--num_class", type=int,
                         default=2, help="Train class num")
@@ -37,8 +37,8 @@ def get_arguments():
     parser.add_argument("--weight_decay", type=float, default=5e-4)
     parser.add_argument("--gpu", nargs="+", type=int)
     parser.add_argument("--save_folder", default="model")
-    parser.add_argument("--num_workers", default=6)
-    parser.add_argument("--max_epoch", default=150, type=int)
+    parser.add_argument("--num_workers", type=int, default=4)
+    parser.add_argument("--max_epoch", default=50, type=int)
     parser.add_argument('--consistency', type=float, default=0.1, help='consistency')
     parser.add_argument("--portion", default=5, type=int)
     return parser.parse_args()
