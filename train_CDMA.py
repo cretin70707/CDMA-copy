@@ -32,7 +32,7 @@ def get_arguments():
     parser.add_argument("--labeled_bs", type=int, default=8)
     parser.add_argument("--num_class", type=int,
                         default=2, help="Train class num")
-    parser.add_argument("--input_size", default=256)
+    parser.add_argument("--input_size", default=512)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=5e-4)
     parser.add_argument("--gpu", nargs="+", type=int)
@@ -43,15 +43,33 @@ def get_arguments():
     parser.add_argument("--portion", default=5, type=int)
     return parser.parse_args()
 
-def get_files(data_root):
-    new_file = []
-    img_names = os.listdir(data_root+'images')
+def get_labeled_files(image_root, mask_root):
+    """
+    Returns a list of dictionaries with labeled image and mask paths.
+    """
+    labeled_files = []
+    img_names = os.listdir(image_root)
     for img_name in img_names:
-        image_root = data_root+'images/'+img_name
-        label_root = data_root+'labels/'+img_name[:-4]+'_mask.png'
-        new_sample = {'img': image_root, 'label': label_root}
-        new_file.append(new_sample)
-    return new_file
+        mask_name = img_name.split('.')[0] + '.bmp'  # Replace extension for masks
+        image_path = os.path.join(image_root, img_name)
+        mask_path = os.path.join(mask_root, mask_name)
+        if os.path.exists(mask_path):  # Ensure the mask exists
+            labeled_files.append({'img': image_path, 'label': mask_path})
+    return labeled_files
+
+
+def get_unlabeled_files(image_root):
+    """
+    Returns a list of dictionaries with unlabeled image paths.
+    """
+    unlabeled_files = []
+    img_names = os.listdir(image_root)
+    for img_name in img_names:
+        image_path = os.path.join(image_root, img_name)
+        unlabeled_files.append({'img': image_path, 'label': None})  # No label for unlabeled data
+    return unlabeled_files
+
+
 
 def get_deeplab(args, ema=False):
     model = MTNet("resnet50", num_classes=args.num_class, use_group_norm=True)
@@ -195,64 +213,57 @@ if __name__ == '__main__':
     # set rand seed
     setup_seed(1)
 
-    labeled_data_root = f'/mnt/data2/lanfz/datasets/digestpath2019/tissue-train-{portion}-patch/'
-    all_data_root = '/mnt/data2/lanfz/datasets/digestpath2019/tissue-train-100-patch/'
-    val_data_root = '/mnt/data2/lanfz/datasets/digestpath2019/tissue-val-patch/'
-    test_data_root = '/mnt/data2/lanfz/datasets/digestpath2019/tissue-test-patch/'
+    labeled_img_root = '/kaggle/input/palm-images/Images'
+    labeled_mask_root = '/kaggle/input/palm-disc-masks/Disc-masks'
+    unlabeled_img_root = '/kaggle/input/images-hpmi-all/Images-HPMI'
 
-    labeled_files = get_files(labeled_data_root)
-    all_data_files = get_files(all_data_root)
+    labeled_files = get_labeled_files(labeled_img_root, labeled_mask_root)
+    unlabeled_files = get_unlabeled_files(unlabeled_img_root)
 
+    all_data_files = labeled_files + unlabeled_files
+    
     np.random.shuffle(labeled_files)
 
     labeled_num = len(labeled_files)
+    unlabeled_num = len(unlabeled_files)
     all_data_num = len(all_data_files)
 
-    labeled_data_img_names = []
-    for i in range(labeled_num):
-        img_path = labeled_files[i]['img']
-        img_name = img_path.split('/')
-        img_name = img_name[-1]
-        labeled_data_img_names.append(img_name)
-
-    labeled_idxs = []
-    unlabeled_idxs = []
-    for i in range(all_data_num):
-        img_path = all_data_files[i]['img']
-        img_name = img_path.split('/')
-        img_name = img_name[-1]
-        if img_name in labeled_data_img_names:
-            labeled_idxs.append(i)
-        else:
-            unlabeled_idxs.append(i)
+    labeled_idxs = list(range(labeled_num))
+    unlabeled_idxs = list(range(labeled_num, all_data_num)) 
     
-    logging.info(f'labeled:{labeled_num},unlabeled:{all_data_num-labeled_num}')
-    print(f'labeled:{labeled_num},unlabeled:{all_data_num-labeled_num}')
+    logging.info(f'labeled: {labeled_num}, unlabeled: {unlabeled_num}')
+    print(f'labeled: {labeled_num}, unlabeled: {unlabeled_num}')
 
-    val_files = get_files(val_data_root)
+    # Validation set - use only labeled images and masks
+    val_files = get_labeled_files(labeled_img_root, labeled_mask_root)
 
-    logging.info(f'training files:{all_data_num}, valid files:{len(val_files)}')
-    print(f'training files:{all_data_num}, valid files:{len(val_files)}')
+    logging.info(f'training files: {all_data_num}, valid files: {len(val_files)}')
+    print(f'training files: {all_data_num}, valid files: {len(val_files)}')
 
+    # Create data loaders
     train_loader = get_train_loader(args, all_data_files, labeled_idxs, unlabeled_idxs)
     val_loader = get_val_loader(args, val_files)
 
+    # Define loss and other training variables
     dice_loss = DiceLoss(n_classes=args.num_class)
 
     max_epoch = args.max_epoch
     iter_num = 0
-    print(f'max_epoch:{max_epoch}')
-    logging.info(f'max_epoch:{max_epoch}')
+    print(f'max_epoch: {max_epoch}')
+    logging.info(f'max_epoch: {max_epoch}')
     max_dice = 0
 
-    # set gpu
+    # Set GPU device
     torch.cuda.set_device(args.gpu[0])
-    # get model
-    model, optimizer = get_deeplab(args)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[max_epoch//4,max_epoch//2,max_epoch*3//4])
 
+    # Get model and optimizer
+    model, optimizer = get_deeplab(args)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[max_epoch // 4, max_epoch // 2, max_epoch * 3 // 4])
+
+    # Initialize training loop
     labeled_names = []
     unlabeled_names = []
+
     for epoch in range(max_epoch):
         t0 = time.time()
         train_loss, cur_lr = train(model, train_loader, optimizer, iter_num, epoch)
@@ -262,24 +273,28 @@ if __name__ == '__main__':
         t2 = time.time()
         scheduler.step()
 
-        iter_num = (epoch+1)*len(train_loader)
+        iter_num = (epoch + 1) * len(train_loader)
 
         print("training/validation time: {0:.2f}s/{1:.2f}s".format(t1 - t0, t2 - t1))
 
         if val_dice.mean() > max_dice:
             max_dice = val_dice.mean()
-            best_epoch = epoch+1
-            print(f'cur_best dice:{max_dice}')
+            best_epoch = epoch + 1
+            print(f'cur_best dice: {max_dice}')
             torch.save(model.module.state_dict(), f'model/cdma_{portion}_best.pth')
-    # # test
+
+    # Testing
     print('------------test-------------')
     save_folder = f'test_results/{portion}_cdma/'
-    test_WSI_data_root = '/mnt/data2/lanfz/datasets/digestpath2019/tissue-test/'
-    test_WSI_files = get_files(test_WSI_data_root)
+    test_WSI_data_root = unlabeled_img_root  # Use the unlabeled images for testing predictions
+    test_WSI_files = get_unlabeled_files(test_WSI_data_root)
     test_WSI_loader = get_val_WSI_loader(test_WSI_files, args)
+
+    # Load best model and evaluate
     test_model = MTNet("resnet50", num_classes=args.num_class, use_group_norm=True, train=False).cuda()
     test_model.eval()
-    ckpt = torch.load(f'model/cmda_{portion}_best.pth', map_location="cpu")
+    ckpt = torch.load(f'model/cdma_{portion}_best.pth', map_location="cpu")
     test_model.load_state_dict(ckpt, strict=True)
     test_dice_WSI = validate_WSI(test_model, test_WSI_loader, overlap=0.25, save_folder=save_folder, save_csv=f'results_csv/cdma_{portion}.csv')
+
     logging.info('test dice {0:.4f}'.format(test_dice_WSI))
