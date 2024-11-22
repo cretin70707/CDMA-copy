@@ -19,8 +19,7 @@ from monai.data import decollate_batch, PILReader
 import logging
 import csv
 from monai.transforms import (
-    AsChannelFirstd,
-    AddChanneld,
+    EnsureChannelFirstd,
     Compose,
     LoadImaged,
     RandRotate90d,
@@ -35,14 +34,8 @@ from monai.transforms import (
 def get_train_loader(args, train_files, labeled_idxs, unlabeled_idxs):
     train_transforms = Compose(
         [
-            # image three channels (H, W, 3) (RGB image); label: (H, W)
-            LoadImaged(keys=["img", "label"],
-                       reader=PILReader, dtype=np.uint8),
-            # label: (1, H, W)
-            AddChanneld(keys=["label"], allow_missing_keys=True),
-            AsChannelFirstd(keys=['img'], channel_dim=-1,
-                            allow_missing_keys=True),  # image: (3, H, W)
-            # Do not scale label
+            LoadImaged(keys=["img", "label"], reader=PILReader, dtype=np.uint8),
+            EnsureChannelFirstd(keys=["img", "label"], allow_missing_keys=True),  # Updated
             ScaleIntensityd(keys=["img"], allow_missing_keys=True),
             Resized(keys=["img", "label"], spatial_size=(args.input_size, args.input_size)),
             RandAxisFlipd(keys=["img", "label"], prob=0.5),
@@ -52,14 +45,11 @@ def get_train_loader(args, train_files, labeled_idxs, unlabeled_idxs):
         ]
     )
     train_ds = monai.data.Dataset(data=train_files, transform=train_transforms)
-    # sampler
     batch_sampler = TwoStreamBatchSampler(
-        labeled_idxs, unlabeled_idxs, args.batch_size, args.batch_size-args.labeled_bs)
+        labeled_idxs, unlabeled_idxs, args.batch_size, args.batch_size - args.labeled_bs
+    )
     train_loader = DataLoader(
-        train_ds,
-        batch_sampler=batch_sampler,
-        num_workers=args.num_workers,
-        pin_memory=False
+        train_ds, batch_sampler=batch_sampler, num_workers=args.num_workers, pin_memory=False
     )
     return train_loader
 
@@ -71,10 +61,9 @@ def get_val_loader(args, val_files, batch_size=None):
     val_transforms = Compose(
         [
             LoadImaged(keys=["img", "label"], reader=PILReader, dtype=np.uint8),
-            AddChanneld(keys=["label"], allow_missing_keys=True),
-            AsChannelFirstd(keys=['img'], channel_dim=-1, allow_missing_keys=True),
+            EnsureChannelFirstd(keys=["img", "label"], allow_missing_keys=True),  # Updated
             ScaleIntensityd(keys=["img"], allow_missing_keys=True),
-            Resized(keys=["img","label"], spatial_size=(args.input_size,args.input_size)),
+            Resized(keys=["img", "label"], spatial_size=(args.input_size, args.input_size)),
             EnsureTyped(keys=["img", "label"]),
         ]
     )
@@ -85,17 +74,14 @@ def get_val_loader(args, val_files, batch_size=None):
 def get_val_WSI_loader(val_files, args):
     val_transforms = Compose(
         [
-            LoadImaged(keys=["img", "label"],
-                       reader=PILReader, dtype=np.uint8),
-            AddChanneld(keys=["label"], allow_missing_keys=True),
-            AsChannelFirstd(keys=['img'], channel_dim=-1, allow_missing_keys=True),
+            LoadImaged(keys=["img", "label"], reader=PILReader, dtype=np.uint8),
+            EnsureChannelFirstd(keys=["img", "label"], allow_missing_keys=True),  # Updated
             ScaleIntensityd(keys=["img"], allow_missing_keys=True),
             EnsureTyped(keys=["img", "label"]),
         ]
     )
     val_ds = monai.data.Dataset(data=val_files, transform=val_transforms)
-    val_loader = DataLoader(val_ds, batch_size=1,
-                            shuffle=False, num_workers=args.num_workers)
+    val_loader = DataLoader(val_ds, batch_size=1, shuffle=False, num_workers=args.num_workers)
     return val_loader
 
 class TwoStreamBatchSampler(Sampler):
