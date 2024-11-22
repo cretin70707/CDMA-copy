@@ -34,7 +34,7 @@ from monai.transforms import (
 def get_train_loader(args, train_files, labeled_idxs, unlabeled_idxs):
     train_transforms = Compose(
         [
-            LoadImaged(keys=["img", "label"], reader=PILReader, dtype=np.uint8, meta_keys="img_meta_dict", allow_missing_keys=True),
+            LoadImaged(keys=["img", "label"], reader=PILReader, dtype=np.uint8, meta_keys=["img_meta_dict", "label_meta_dict"],),
             EnsureChannelFirstd(keys=["img", "label"]),  # Updated
             ScaleIntensityd(keys=["img"], allow_missing_keys=True),
             Resized(keys=["img", "label"],  spatial_size=(args.input_size, args.input_size)),
