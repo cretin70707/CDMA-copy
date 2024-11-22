@@ -111,13 +111,7 @@ def train(model, train_loader, optimizer, iter_num, epoch):
     epoch_loss_unsup = 0
     for batch_data in train_loader:
         
-        print(f"Batch data keys: {batch_data.keys()}")
-        if 'img_meta_dict' in batch_data:
-            print(f"Image metadata: {batch_data['img_meta_dict']}")
-        else:
-            print("img_meta_dict is missing from batch_data")
-            break
-        batch_names = batch_data['img_meta_dict']['filename_or_obj']
+        batch_names = batch_data['img']['label']
         labeled_names = labeled_names + batch_names[:args.labeled_bs]    
         unlabeled_names = unlabeled_names + batch_names[args.labeled_bs:]
 
