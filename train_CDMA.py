@@ -44,30 +44,31 @@ def get_arguments():
     return parser.parse_args()
 
 def get_labeled_files(image_root, mask_root):
-    """
-    Returns a list of dictionaries with labeled image and mask paths.
-    """
     labeled_files = []
     img_names = os.listdir(image_root)
     for img_name in img_names:
-        mask_name = img_name.split('.')[0] + '.bmp'  # Replace extension for masks
         image_path = os.path.join(image_root, img_name)
+        mask_name = os.path.splitext(img_name)[0] + '.bmp'  # Assuming masks have .bmp extension
         mask_path = os.path.join(mask_root, mask_name)
-        if os.path.exists(mask_path):  # Ensure the mask exists
+        if os.path.exists(image_path) and os.path.exists(mask_path):
             labeled_files.append({'img': image_path, 'label': mask_path})
+        else:
+            print(f"Missing file: {image_path} or {mask_path}")
     return labeled_files
 
 
+
 def get_unlabeled_files(image_root):
-    """
-    Returns a list of dictionaries with unlabeled image paths.
-    """
     unlabeled_files = []
     img_names = os.listdir(image_root)
     for img_name in img_names:
         image_path = os.path.join(image_root, img_name)
-        unlabeled_files.append({'img': image_path, 'label': None})  # No label for unlabeled data
+        if os.path.exists(image_path):
+            unlabeled_files.append({'img': image_path, 'label': None})
+        else:
+            print(f"Missing file: {image_path}")
     return unlabeled_files
+
 
 
 
@@ -241,6 +242,13 @@ if __name__ == '__main__':
     print(f'training files: {all_data_num}, valid files: {len(val_files)}')
 
     # Create data loaders
+    for idx, item in enumerate(all_data_files):
+        print(f"Index: {idx}, Item: {item}")
+        if not item['img']:
+            print(f"Missing image path at index {idx}")
+        if 'label' in item and item['label'] is None:
+            print(f"Missing label path at index {idx}")
+
     train_loader = get_train_loader(args, all_data_files, labeled_idxs, unlabeled_idxs)
     val_loader = get_val_loader(args, val_files)
 
