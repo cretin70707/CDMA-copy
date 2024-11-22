@@ -57,7 +57,7 @@ def get_labeled_files(image_root, mask_root):
         else:
             # Print a warning for missing files and skip them
             print(f"Missing file: {image_path} or {mask_path}. Skipping.")
-    
+    print(f"Total valid labeled samples: {len(labeled_files)}")
     return labeled_files
 
 
@@ -72,6 +72,7 @@ def get_unlabeled_files(image_root):
             unlabeled_files.append({'img': image_path, 'label': None})
         else:
             print(f"Missing file: {image_path}")
+    print(f"Total valid unlabeled samples: {len(unlabeled_files)}")        
     return unlabeled_files
 
 
@@ -225,7 +226,19 @@ if __name__ == '__main__':
 
     labeled_files = get_labeled_files(labeled_img_root, labeled_mask_root)
     unlabeled_files = get_unlabeled_files(unlabeled_img_root)
+    
+    print(f"Labeled dataset (first 5): {labeled_files[:5]}")
+    print(f"Unlabeled dataset (first 5): {unlabeled_files[:5]}")
+    
+    # Check for None values
+    for i, item in enumerate(labeled_files):
+        if item["img"] is None or item["label"] is None:
+            print(f"Invalid entry in labeled dataset at index {i}: {item}")
 
+    for i, item in enumerate(unlabeled_files):
+        if item["img"] is None:
+            print(f"Invalid entry in unlabeled dataset at index {i}: {item}")
+    
     all_data_files = labeled_files + unlabeled_files
     
     np.random.shuffle(labeled_files)
