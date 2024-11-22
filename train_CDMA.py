@@ -54,9 +54,9 @@ def get_labeled_files(image_root, mask_root):
         # Check if both image and mask exist
         if os.path.exists(image_path) and os.path.exists(mask_path):
             labeled_files.append({'img': image_path, 'label': mask_path})
-        else:
+        #else:
             # Print a warning for missing files and skip them
-            print(f"Missing file: {image_path} or {mask_path}. Skipping.")
+            #print(f"Missing file: {image_path} or {mask_path}. Skipping.")
     print(f"Total valid labeled samples: {len(labeled_files)}")
     return labeled_files
 
