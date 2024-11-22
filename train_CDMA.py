@@ -260,12 +260,7 @@ if __name__ == '__main__':
     print(f'training files: {all_data_num}, valid files: {len(val_files)}')
 
     # Create data loaders
-    for idx, item in enumerate(all_data_files):
-        print(f"Index: {idx}, Item: {item}")
-        if not item['img']:
-            print(f"Missing image path at index {idx}")
-        if 'label' in item and item['label'] is None:
-            print(f"Missing label path at index {idx}")
+
 
     train_loader = get_train_loader(args, all_data_files, labeled_idxs, unlabeled_idxs)
     val_loader = get_val_loader(args, val_files)
