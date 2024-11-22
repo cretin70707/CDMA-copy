@@ -45,16 +45,21 @@ def get_arguments():
 
 def get_labeled_files(image_root, mask_root):
     labeled_files = []
-    img_names = os.listdir(image_root)
+    img_names = os.listdir(image_root)  # List all images
     for img_name in img_names:
         image_path = os.path.join(image_root, img_name)
         mask_name = os.path.splitext(img_name)[0] + '.bmp'  # Assuming masks have .bmp extension
         mask_path = os.path.join(mask_root, mask_name)
+        
+        # Check if both image and mask exist
         if os.path.exists(image_path) and os.path.exists(mask_path):
             labeled_files.append({'img': image_path, 'label': mask_path})
         else:
-            print(f"Missing file: {image_path} or {mask_path}")
+            # Print a warning for missing files and skip them
+            print(f"Missing file: {image_path} or {mask_path}. Skipping.")
+    
     return labeled_files
+
 
 
 
