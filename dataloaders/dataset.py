@@ -34,10 +34,10 @@ from monai.transforms import (
 def get_train_loader(args, train_files, labeled_idxs, unlabeled_idxs):
     train_transforms = Compose(
         [
-            LoadImaged(keys=["img", "label"], allow_missing_keys=True, reader=PILReader, dtype=np.uint8),
+            LoadImaged(keys=["img", "label"], reader=PILReader, dtype=np.uint8),
             EnsureChannelFirstd(keys=["img", "label"], allow_missing_keys=True),  # Updated
             ScaleIntensityd(keys=["img"], allow_missing_keys=True),
-            Resized(keys=["img", "label"], allow_missing_keys=True, spatial_size=(args.input_size, args.input_size)),
+            Resized(keys=["img", "label"],  spatial_size=(args.input_size, args.input_size)),
             RandAxisFlipd(keys=["img", "label"], allow_missing_keys=True, prob=0.5),
             RandRotate90d(keys=["img", "label"], allow_missing_keys=True, prob=0.5, spatial_axes=[0, 1]),
             RandGaussianNoised(keys=["img"], allow_missing_keys=True, prob=0.25),

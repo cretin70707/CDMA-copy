@@ -63,17 +63,21 @@ def get_labeled_files(image_root, mask_root):
 
 
 
-def get_unlabeled_files(image_root):
+def get_unlabeled_files(image_root, mask_root):
     unlabeled_files = []
     img_names = os.listdir(image_root)
     for img_name in img_names:
         image_path = os.path.join(image_root, img_name)
-        if os.path.exists(image_path):
-            unlabeled_files.append({'img': image_path})
+        mask_name = os.path.splitext(img_name)[0] + ".bmp"
+        mask_path = os.path.join(mask_root, mask_name)
+        
+        # Ensure the empty mask exists
+        if os.path.exists(image_path) and os.path.exists(mask_path):
+            unlabeled_files.append({'img': image_path, 'label': mask_path})
         else:
-            print(f"Missing file: {image_path}")
-    print(f"Total valid unlabeled samples: {len(unlabeled_files)}")        
+            print(f"Missing Unlabeled file: {image_path} or {mask_path}")
     return unlabeled_files
+
 
 
 
@@ -223,21 +227,15 @@ if __name__ == '__main__':
     labeled_img_root = '/kaggle/input/palm-images/Images'
     labeled_mask_root = '/kaggle/input/palm-disc-masks/Disc-masks'
     unlabeled_img_root = '/kaggle/input/images-hpmi-all/Images-HPMI'
-
+    unlabeled_img_mask = '/kaggle/input/hpmi-empty-mask'
+    
     labeled_files = get_labeled_files(labeled_img_root, labeled_mask_root)
-    unlabeled_files = get_unlabeled_files(unlabeled_img_root)
+    unlabeled_files = get_unlabeled_files(unlabeled_img_root, unlabeled_img_mask)
     
     print(f"Labeled dataset (first 5): {labeled_files[:5]}")
     print(f"Unlabeled dataset (first 5): {unlabeled_files[:5]}")
     
-    # Check for None values
-    for i, item in enumerate(labeled_files):
-        if item["img"] is None or item["label"] is None:
-            print(f"Invalid entry in labeled dataset at index {i}: {item}")
 
-    for i, item in enumerate(unlabeled_files):
-        if item["img"] is None:
-            print(f"Invalid entry in unlabeled dataset at index {i}: {item}")
     
     all_data_files = labeled_files + unlabeled_files
     
