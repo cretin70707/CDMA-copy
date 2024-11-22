@@ -69,7 +69,7 @@ def get_unlabeled_files(image_root):
     for img_name in img_names:
         image_path = os.path.join(image_root, img_name)
         if os.path.exists(image_path):
-            unlabeled_files.append({'img': image_path, 'label': None})
+            unlabeled_files.append({'img': image_path})
         else:
             print(f"Missing file: {image_path}")
     print(f"Total valid unlabeled samples: {len(unlabeled_files)}")        
